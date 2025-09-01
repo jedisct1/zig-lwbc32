@@ -1,13 +1,5 @@
 const std = @import("std");
 
-inline fn rotateLeft(comptime T: type, x: T, n: anytype) T {
-    return std.math.rotl(T, x, n);
-}
-
-inline fn rotateRight(comptime T: type, x: T, n: anytype) T {
-    return std.math.rotr(T, x, n);
-}
-
 pub const Simon32 = struct {
     round_keys: [32]u16,
 
@@ -21,122 +13,123 @@ pub const Simon32 = struct {
         return cipher;
     }
 
-    fn expandKey(self: *Self, key: [4]u16) void {
-        const mod_mask: u16 = 0xFFFF; // 2^16 - 1
-        const round_constant: u16 = mod_mask ^ 3; // 0xFFFC
+    inline fn expandKey(self: *Self, key: [4]u16) void {
+        const mod_mask: u16 = 0xFFFF;
+        const round_constant: u16 = mod_mask ^ 3;
 
-        // Initialize key register like reference implementation
-        // Key 0x1918111009080100 -> k_reg = [0x1918, 0x1110, 0x0908, 0x0100]
-        var k_reg: [4]u16 = .{ key[3], key[2], key[1], key[0] };
+        self.round_keys[0] = key[0];
+        self.round_keys[1] = key[1];
+        self.round_keys[2] = key[2];
+        self.round_keys[3] = key[3];
 
-        // Generate all 32 round keys
-        var x: usize = 0;
-        while (x < rounds) : (x += 1) {
-            // Right rotate k_reg[0] by 3
-            var rs_3 = rotateRight(u16, k_reg[0], 3);
+        const unroll_factor = 4;
+        const unrolled_iterations = (rounds - 4) / unroll_factor;
+        const remainder = (rounds - 4) % unroll_factor;
 
-            // For m=4, XOR with k_reg[2]
-            rs_3 = rs_3 ^ k_reg[2];
+        var i: usize = 4;
+        inline for (0..unrolled_iterations) |_| {
+            inline for (0..unroll_factor) |j| {
+                const idx = i + j;
+                var tmp = std.math.rotr(u16, self.round_keys[idx - 1], 3);
+                tmp = tmp ^ self.round_keys[idx - 3];
+                tmp = tmp ^ std.math.rotr(u16, tmp, 1);
+                const z_bit: u16 = @intCast((z0 >> @as(u6, @intCast((idx - 4) % 62))) & 1);
+                self.round_keys[idx] = round_constant ^ z_bit ^ tmp ^ self.round_keys[idx - 4];
+            }
+            i += unroll_factor;
+        }
 
-            // Right rotate rs_3 by 1
-            const rs_1 = rotateRight(u16, rs_3, 1);
-
-            // Get z bit and calculate c_z
-            const z_bit: u16 = @intCast((z0 >> @as(u6, @intCast(x % 62))) & 1);
-            const c_z = z_bit ^ round_constant;
-
-            // Calculate new key
-            const new_k = c_z ^ rs_1 ^ rs_3 ^ k_reg[3];
-
-            // Store the key being shifted out (k_reg[3]) as the round key
-            self.round_keys[x] = k_reg[3];
-
-            // Shift keys right and insert new key at position 0
-            k_reg[3] = k_reg[2];
-            k_reg[2] = k_reg[1];
-            k_reg[1] = k_reg[0];
-            k_reg[0] = new_k;
+        inline for (0..remainder) |j| {
+            const idx = i + j;
+            var tmp = std.math.rotr(u16, self.round_keys[idx - 1], 3);
+            tmp = tmp ^ self.round_keys[idx - 3];
+            tmp = tmp ^ std.math.rotr(u16, tmp, 1);
+            const z_bit: u16 = @intCast((z0 >> @as(u6, @intCast((idx - 4) % 62))) & 1);
+            self.round_keys[idx] = round_constant ^ z_bit ^ tmp ^ self.round_keys[idx - 4];
         }
     }
 
-    fn f(x: u16) u16 {
-        return (rotateLeft(u16, x, 1) & rotateLeft(u16, x, 8)) ^ rotateLeft(u16, x, 2);
-    }
+    pub inline fn encrypt(self: *const Self, plaintext: [2]u16) [2]u16 {
+        var x = plaintext[0];
+        var y = plaintext[1];
 
-    pub fn encrypt(self: *const Self, plaintext: [2]u16) [2]u16 {
-        var x = plaintext[0]; // Upper word (MSB)
-        var y = plaintext[1]; // Lower word (LSB)
+        const unroll_factor = 4;
+        const unrolled_iterations = rounds / unroll_factor;
+        const remainder = rounds % unroll_factor;
 
         var i: usize = 0;
-        while (i < rounds) : (i += 1) {
-            // Generate all circular shifts
-            const ls_1_x = rotateLeft(u16, x, 1);
-            const ls_8_x = rotateLeft(u16, x, 8);
-            const ls_2_x = rotateLeft(u16, x, 2);
-
-            // XOR Chain
-            const xor_1 = (ls_1_x & ls_8_x) ^ y;
-            const xor_2 = xor_1 ^ ls_2_x;
-            const new_x = self.round_keys[i] ^ xor_2;
-
-            y = x;
-            x = new_x;
+        inline for (0..unrolled_iterations) |_| {
+            inline for (0..unroll_factor) |j| {
+                const tmp = x;
+                const f = (std.math.rotl(u16, x, 1) & std.math.rotl(u16, x, 8)) ^ std.math.rotl(u16, x, 2);
+                x = y ^ f ^ self.round_keys[i + j];
+                y = tmp;
+            }
+            i += unroll_factor;
         }
 
-        return .{ x, y }; // Return as [MSB, LSB]
+        inline for (0..remainder) |j| {
+            const tmp = x;
+            const f = (std.math.rotl(u16, x, 1) & std.math.rotl(u16, x, 8)) ^ std.math.rotl(u16, x, 2);
+            x = y ^ f ^ self.round_keys[i + j];
+            y = tmp;
+        }
+
+        return .{ x, y };
     }
 
-    pub fn decrypt(self: *const Self, ciphertext: [2]u16) [2]u16 {
-        // Start with swapped words like reference implementation
-        var x = ciphertext[1]; // Lower word becomes x
-        var y = ciphertext[0]; // Upper word becomes y
+    pub inline fn decrypt(self: *const Self, ciphertext: [2]u16) [2]u16 {
+        var x = ciphertext[0];
+        var y = ciphertext[1];
+
+        const unroll_factor = 4;
+        const unrolled_iterations = rounds / unroll_factor;
+        const remainder = rounds % unroll_factor;
 
         var i: usize = rounds;
-        while (i > 0) {
+
+        inline for (0..remainder) |j| {
             i -= 1;
-            // Generate all circular shifts
-            const ls_1_x = rotateLeft(u16, x, 1);
-            const ls_8_x = rotateLeft(u16, x, 8);
-            const ls_2_x = rotateLeft(u16, x, 2);
-
-            // XOR Chain (same as encryption)
-            const xor_1 = (ls_1_x & ls_8_x) ^ y;
-            const xor_2 = xor_1 ^ ls_2_x;
-            const new_x = self.round_keys[i] ^ xor_2;
-
-            y = x;
-            x = new_x;
+            const tmp = y;
+            const f = (std.math.rotl(u16, y, 1) & std.math.rotl(u16, y, 8)) ^ std.math.rotl(u16, y, 2);
+            y = x ^ f ^ self.round_keys[i];
+            x = tmp;
+            _ = j;
         }
 
-        return .{ y, x }; // Return swapped back
+        inline for (0..unrolled_iterations) |_| {
+            inline for (0..unroll_factor) |_| {
+                i -= 1;
+                const tmp = y;
+                const f = (std.math.rotl(u16, y, 1) & std.math.rotl(u16, y, 8)) ^ std.math.rotl(u16, y, 2);
+                y = x ^ f ^ self.round_keys[i];
+                x = tmp;
+            }
+        }
+
+        return .{ x, y };
     }
 
-    pub fn encryptBlock(self: *const Self, block: [4]u8) [4]u8 {
+    pub inline fn encryptBlock(self: *const Self, block: [4]u8) [4]u8 {
         const plaintext: [2]u16 = .{
-            std.mem.readInt(u16, block[0..2], .little),
-            std.mem.readInt(u16, block[2..4], .little),
+            @bitCast(block[0..2].*),
+            @bitCast(block[2..4].*),
         };
 
         const ciphertext = self.encrypt(plaintext);
 
-        var result: [4]u8 = undefined;
-        std.mem.writeInt(u16, result[0..2], ciphertext[0], .little);
-        std.mem.writeInt(u16, result[2..4], ciphertext[1], .little);
-        return result;
+        return @bitCast([_]u16{ ciphertext[0], ciphertext[1] });
     }
 
-    pub fn decryptBlock(self: *const Self, block: [4]u8) [4]u8 {
+    pub inline fn decryptBlock(self: *const Self, block: [4]u8) [4]u8 {
         const ciphertext: [2]u16 = .{
-            std.mem.readInt(u16, block[0..2], .little),
-            std.mem.readInt(u16, block[2..4], .little),
+            @bitCast(block[0..2].*),
+            @bitCast(block[2..4].*),
         };
 
         const plaintext = self.decrypt(ciphertext);
 
-        var result: [4]u8 = undefined;
-        std.mem.writeInt(u16, result[0..2], plaintext[0], .little);
-        std.mem.writeInt(u16, result[2..4], plaintext[1], .little);
-        return result;
+        return @bitCast([_]u16{ plaintext[0], plaintext[1] });
     }
 };
 

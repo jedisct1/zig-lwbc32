@@ -1,20 +1,12 @@
 const std = @import("std");
 
-inline fn rotateLeft(comptime T: type, x: T, n: anytype) T {
-    return std.math.rotl(T, x, n);
-}
-
-inline fn rotateRight(comptime T: type, x: T, n: anytype) T {
-    return std.math.rotr(T, x, n);
-}
-
 pub const Speck32 = struct {
     round_keys: [22]u16,
 
     const Self = @This();
     const rounds = 22;
-    const alpha = 7; // Right rotation amount for 16-bit words
-    const beta = 2; // Left rotation amount for 16-bit words
+    const alpha = 7;
+    const beta = 2;
 
     pub fn init(key: [4]u16) Self {
         var cipher = Self{ .round_keys = undefined };
@@ -22,88 +14,134 @@ pub const Speck32 = struct {
         return cipher;
     }
 
-    fn expandKey(self: *Self, key: [4]u16) void {
+    inline fn expandKey(self: *Self, key: [4]u16) void {
         var k = key[0];
-        var l: [3]u16 = .{ key[1], key[2], key[3] };
+        var l0 = key[1];
+        var l1 = key[2];
+        var l2 = key[3];
 
         self.round_keys[0] = k;
 
+        const unroll_factor = 3;
+        const unrolled_iterations = (rounds - 1) / unroll_factor;
+        const remainder = (rounds - 1) % unroll_factor;
+
         var i: u16 = 0;
-        while (i < rounds - 1) : (i += 1) {
-            const idx = i % 3;
-            l[idx] = (k +% rotateRight(u16, l[idx], alpha)) ^ i;
-            k = rotateLeft(u16, k, beta) ^ l[idx];
+        inline for (0..unrolled_iterations) |_| {
+            l0 = (k +% std.math.rotr(u16, l0, alpha)) ^ i;
+            k = std.math.rotl(u16, k, beta) ^ l0;
             self.round_keys[i + 1] = k;
+            i += 1;
+
+            l1 = (k +% std.math.rotr(u16, l1, alpha)) ^ i;
+            k = std.math.rotl(u16, k, beta) ^ l1;
+            self.round_keys[i + 1] = k;
+            i += 1;
+
+            l2 = (k +% std.math.rotr(u16, l2, alpha)) ^ i;
+            k = std.math.rotl(u16, k, beta) ^ l2;
+            self.round_keys[i + 1] = k;
+            i += 1;
+        }
+
+        inline for (0..remainder) |j| {
+            const idx = j % 3;
+            const l_val = switch (idx) {
+                0 => l0,
+                1 => l1,
+                2 => l2,
+                else => unreachable,
+            };
+            const new_l = (k +% std.math.rotr(u16, l_val, alpha)) ^ i;
+            k = std.math.rotl(u16, k, beta) ^ new_l;
+            self.round_keys[i + 1] = k;
+            switch (idx) {
+                0 => l0 = new_l,
+                1 => l1 = new_l,
+                2 => l2 = new_l,
+                else => unreachable,
+            }
+            i += 1;
         }
     }
 
-    fn roundFunction(x: u16, y: u16, k: u16) struct { u16, u16 } {
-        const new_x = (rotateRight(u16, x, alpha) +% y) ^ k;
-        const new_y = rotateLeft(u16, y, beta) ^ new_x;
-        return .{ new_x, new_y };
-    }
-
-    fn inverseRoundFunction(x: u16, y: u16, k: u16) struct { u16, u16 } {
-        const new_y = rotateRight(u16, y ^ x, beta);
-        const new_x = rotateLeft(u16, (x ^ k) -% new_y, alpha);
-        return .{ new_x, new_y };
-    }
-
-    pub fn encrypt(self: *const Self, plaintext: [2]u16) [2]u16 {
+    pub inline fn encrypt(self: *const Self, plaintext: [2]u16) [2]u16 {
         var x = plaintext[0];
         var y = plaintext[1];
 
-        var i: usize = 0;
-        while (i < rounds) : (i += 1) {
-            const result = roundFunction(x, y, self.round_keys[i]);
-            x = result[0];
-            y = result[1];
+        const unroll_factor = 2;
+        const unrolled = rounds / unroll_factor;
+        const remainder = rounds % unroll_factor;
+
+        inline for (0..unrolled) |i| {
+            const k0 = self.round_keys[i * 2];
+            const k1 = self.round_keys[i * 2 + 1];
+
+            x = (std.math.rotr(u16, x, alpha) +% y) ^ k0;
+            y = std.math.rotl(u16, y, beta) ^ x;
+
+            x = (std.math.rotr(u16, x, alpha) +% y) ^ k1;
+            y = std.math.rotl(u16, y, beta) ^ x;
+        }
+
+        inline for (0..remainder) |i| {
+            const idx = unrolled * unroll_factor + i;
+            x = (std.math.rotr(u16, x, alpha) +% y) ^ self.round_keys[idx];
+            y = std.math.rotl(u16, y, beta) ^ x;
         }
 
         return .{ x, y };
     }
 
-    pub fn decrypt(self: *const Self, ciphertext: [2]u16) [2]u16 {
+    pub inline fn decrypt(self: *const Self, ciphertext: [2]u16) [2]u16 {
         var x = ciphertext[0];
         var y = ciphertext[1];
 
-        var i: usize = rounds;
-        while (i > 0) {
-            i -= 1;
-            const result = inverseRoundFunction(x, y, self.round_keys[i]);
-            x = result[0];
-            y = result[1];
+        const unroll_factor = 2;
+        const unrolled = rounds / unroll_factor;
+        const remainder = rounds % unroll_factor;
+
+        inline for (0..remainder) |j| {
+            const i = rounds - 1 - j;
+            y = std.math.rotr(u16, y ^ x, beta);
+            x = std.math.rotl(u16, (x ^ self.round_keys[i]) -% y, alpha);
+        }
+
+        inline for (0..unrolled) |j| {
+            const base_idx = rounds - remainder - (j + 1) * unroll_factor;
+            const k1 = self.round_keys[base_idx + 1];
+            const k0 = self.round_keys[base_idx];
+
+            y = std.math.rotr(u16, y ^ x, beta);
+            x = std.math.rotl(u16, (x ^ k1) -% y, alpha);
+
+            y = std.math.rotr(u16, y ^ x, beta);
+            x = std.math.rotl(u16, (x ^ k0) -% y, alpha);
         }
 
         return .{ x, y };
     }
 
-    pub fn encryptBlock(self: *const Self, block: [4]u8) [4]u8 {
+    pub inline fn encryptBlock(self: *const Self, block: [4]u8) [4]u8 {
         const plaintext: [2]u16 = .{
-            std.mem.readInt(u16, block[0..2], .little),
-            std.mem.readInt(u16, block[2..4], .little),
+            @bitCast(block[0..2].*),
+            @bitCast(block[2..4].*),
         };
 
         const ciphertext = self.encrypt(plaintext);
 
-        var result: [4]u8 = undefined;
-        std.mem.writeInt(u16, result[0..2], ciphertext[0], .little);
-        std.mem.writeInt(u16, result[2..4], ciphertext[1], .little);
-        return result;
+        return @bitCast([_]u16{ ciphertext[0], ciphertext[1] });
     }
 
-    pub fn decryptBlock(self: *const Self, block: [4]u8) [4]u8 {
+    pub inline fn decryptBlock(self: *const Self, block: [4]u8) [4]u8 {
         const ciphertext: [2]u16 = .{
-            std.mem.readInt(u16, block[0..2], .little),
-            std.mem.readInt(u16, block[2..4], .little),
+            @bitCast(block[0..2].*),
+            @bitCast(block[2..4].*),
         };
 
         const plaintext = self.decrypt(ciphertext);
 
-        var result: [4]u8 = undefined;
-        std.mem.writeInt(u16, result[0..2], plaintext[0], .little);
-        std.mem.writeInt(u16, result[2..4], plaintext[1], .little);
-        return result;
+        return @bitCast([_]u16{ plaintext[0], plaintext[1] });
     }
 };
 
