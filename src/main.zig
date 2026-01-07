@@ -104,6 +104,25 @@ pub fn main() !void {
         try stdout.print("  Match: {}\n\n", .{std.meta.eql(plaintext3, decrypted)});
     }
 
+    {
+        const key64: [4]u32 = .{ 0x03020100, 0x0b0a0908, 0x13121110, 0x1b1a1918 };
+        const plaintext64: [2]u32 = .{ 0x656b696c, 0x20646e75 };
+        const simeck = lwbc32.Simeck64.init(key64);
+        const ciphertext = simeck.encrypt(plaintext64);
+        const decrypted = simeck.decrypt(ciphertext);
+
+        try stdout.print("SIMECK64/128:\n", .{});
+        try stdout.print("  Key:        ", .{});
+        inline for (key64) |k| {
+            try stdout.print("{x:08} ", .{k});
+        }
+        try stdout.print("\n", .{});
+        try stdout.print("  Plaintext:  {x:08} {x:08}\n", .{ plaintext64[0], plaintext64[1] });
+        try stdout.print("  Ciphertext: {x:08} {x:08}\n", .{ ciphertext[0], ciphertext[1] });
+        try stdout.print("  Decrypted:  {x:08} {x:08}\n", .{ decrypted[0], decrypted[1] });
+        try stdout.print("  Match: {}\n\n", .{std.meta.eql(plaintext64, decrypted)});
+    }
+
     try stdout.print("Benchmark (10 million encryptions each):\n", .{});
     try stdout.print("----------------------------------------\n", .{});
 
@@ -212,6 +231,28 @@ pub fn main() !void {
         const simeck_ms = @as(f64, @floatFromInt(simeck_time)) / 1_000_000.0;
         const simeck_ops_sec = @as(f64, iterations) / (simeck_ms / 1000.0);
         try stdout.print("SIMECK32:  {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ simeck_ms, simeck_ops_sec, (simeck_ops_sec * 32.0) / 1_000_000_000.0 });
+    }
+
+    {
+        const key64: [4]u32 = .{ 0x03020100, 0x0b0a0908, 0x13121110, 0x1b1a1918 };
+        const plaintext64: [2]u32 = .{ 0x656b696c, 0x20646e75 };
+        const simeck = lwbc32.Simeck64.init(key64);
+        var timer = try std.time.Timer.start();
+
+        var i: usize = 0;
+        while (i < iterations) : (i += 4) {
+            const ct1 = simeck.encrypt(plaintext64);
+            const ct2 = simeck.encrypt(.{ ct1[0], ct1[1] });
+            const ct3 = simeck.encrypt(.{ ct2[0], ct2[1] });
+            const ct4 = simeck.encrypt(.{ ct3[0], ct3[1] });
+            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
+            std.mem.doNotOptimizeAway(dummy);
+        }
+
+        const simeck_time = timer.read();
+        const simeck_ms = @as(f64, @floatFromInt(simeck_time)) / 1_000_000.0;
+        const simeck_ops_sec = @as(f64, iterations) / (simeck_ms / 1000.0);
+        try stdout.print("SIMECK64:  {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ simeck_ms, simeck_ops_sec, (simeck_ops_sec * 64.0) / 1_000_000_000.0 });
     }
 
     try stdout_writer.interface.flush();
