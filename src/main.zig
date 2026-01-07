@@ -73,6 +73,25 @@ pub fn main() !void {
     }
 
     {
+        const key64: [4]u32 = .{ 0x03020100, 0x0b0a0908, 0x13121110, 0x1b1a1918 };
+        const plaintext64: [2]u32 = .{ 0x656b696c, 0x20646e75 };
+        const simon = lwbc32.Simon64.init(key64);
+        const ciphertext = simon.encrypt(plaintext64);
+        const decrypted = simon.decrypt(ciphertext);
+
+        try stdout.print("SIMON64/128:\n", .{});
+        try stdout.print("  Key:        ", .{});
+        inline for (key64) |k| {
+            try stdout.print("{x:08} ", .{k});
+        }
+        try stdout.print("\n", .{});
+        try stdout.print("  Plaintext:  {x:08} {x:08}\n", .{ plaintext64[0], plaintext64[1] });
+        try stdout.print("  Ciphertext: {x:08} {x:08}\n", .{ ciphertext[0], ciphertext[1] });
+        try stdout.print("  Decrypted:  {x:08} {x:08}\n", .{ decrypted[0], decrypted[1] });
+        try stdout.print("  Match: {}\n\n", .{std.meta.eql(plaintext64, decrypted)});
+    }
+
+    {
         const simeck = lwbc32.Simeck32.init(key);
         const plaintext3: [2]u16 = .{ 0x6565, 0x6877 };
         const ciphertext = simeck.encrypt(plaintext3);
@@ -151,6 +170,28 @@ pub fn main() !void {
         const simon_ms = @as(f64, @floatFromInt(simon_time)) / 1_000_000.0;
         const simon_ops_sec = @as(f64, iterations) / (simon_ms / 1000.0);
         try stdout.print("SIMON32:   {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ simon_ms, simon_ops_sec, (simon_ops_sec * 32.0) / 1_000_000_000.0 });
+    }
+
+    {
+        const key64: [4]u32 = .{ 0x03020100, 0x0b0a0908, 0x13121110, 0x1b1a1918 };
+        const plaintext64: [2]u32 = .{ 0x656b696c, 0x20646e75 };
+        const simon = lwbc32.Simon64.init(key64);
+        var timer = try std.time.Timer.start();
+
+        var i: usize = 0;
+        while (i < iterations) : (i += 4) {
+            const ct1 = simon.encrypt(plaintext64);
+            const ct2 = simon.encrypt(.{ ct1[0], ct1[1] });
+            const ct3 = simon.encrypt(.{ ct2[0], ct2[1] });
+            const ct4 = simon.encrypt(.{ ct3[0], ct3[1] });
+            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
+            std.mem.doNotOptimizeAway(dummy);
+        }
+
+        const simon_time = timer.read();
+        const simon_ms = @as(f64, @floatFromInt(simon_time)) / 1_000_000.0;
+        const simon_ops_sec = @as(f64, iterations) / (simon_ms / 1000.0);
+        try stdout.print("SIMON64:   {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ simon_ms, simon_ops_sec, (simon_ops_sec * 64.0) / 1_000_000_000.0 });
     }
 
     {
