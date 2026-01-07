@@ -161,15 +161,13 @@ pub fn main() !void {
         const speck = lwbc32.Speck32.init(key);
         var timer = try std.time.Timer.start();
 
+        var block = plaintext;
         var i: usize = 0;
-        while (i < iterations) : (i += 4) {
-            const ct1 = speck.encrypt(plaintext);
-            const ct2 = speck.encrypt(.{ ct1[0], ct1[1] });
-            const ct3 = speck.encrypt(.{ ct2[0], ct2[1] });
-            const ct4 = speck.encrypt(.{ ct3[0], ct3[1] });
-            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
-            std.mem.doNotOptimizeAway(dummy);
+        while (i < iterations) : (i += 1) {
+            block = speck.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
         }
+        dummy +%= block[0] +% block[1];
 
         const speck_time = timer.read();
         const speck_ms = @as(f64, @floatFromInt(speck_time)) / 1_000_000.0;
@@ -183,15 +181,13 @@ pub fn main() !void {
         const speck = lwbc32.Speck64.init(key64);
         var timer = try std.time.Timer.start();
 
+        var block = plaintext64;
         var i: usize = 0;
-        while (i < iterations) : (i += 4) {
-            const ct1 = speck.encrypt(plaintext64);
-            const ct2 = speck.encrypt(.{ ct1[0], ct1[1] });
-            const ct3 = speck.encrypt(.{ ct2[0], ct2[1] });
-            const ct4 = speck.encrypt(.{ ct3[0], ct3[1] });
-            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
-            std.mem.doNotOptimizeAway(dummy);
+        while (i < iterations) : (i += 1) {
+            block = speck.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
         }
+        dummy +%= block[0] +% block[1];
 
         const speck_time = timer.read();
         const speck_ms = @as(f64, @floatFromInt(speck_time)) / 1_000_000.0;
@@ -203,15 +199,13 @@ pub fn main() !void {
         const simon = lwbc32.Simon32.init(key);
         var timer = try std.time.Timer.start();
 
+        var block = plaintext;
         var i: usize = 0;
-        while (i < iterations) : (i += 4) {
-            const ct1 = simon.encrypt(plaintext);
-            const ct2 = simon.encrypt(.{ ct1[0], ct1[1] });
-            const ct3 = simon.encrypt(.{ ct2[0], ct2[1] });
-            const ct4 = simon.encrypt(.{ ct3[0], ct3[1] });
-            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
-            std.mem.doNotOptimizeAway(dummy);
+        while (i < iterations) : (i += 1) {
+            block = simon.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
         }
+        dummy +%= block[0] +% block[1];
 
         const simon_time = timer.read();
         const simon_ms = @as(f64, @floatFromInt(simon_time)) / 1_000_000.0;
@@ -225,15 +219,13 @@ pub fn main() !void {
         const simon = lwbc32.Simon64.init(key64);
         var timer = try std.time.Timer.start();
 
+        var block = plaintext64;
         var i: usize = 0;
-        while (i < iterations) : (i += 4) {
-            const ct1 = simon.encrypt(plaintext64);
-            const ct2 = simon.encrypt(.{ ct1[0], ct1[1] });
-            const ct3 = simon.encrypt(.{ ct2[0], ct2[1] });
-            const ct4 = simon.encrypt(.{ ct3[0], ct3[1] });
-            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
-            std.mem.doNotOptimizeAway(dummy);
+        while (i < iterations) : (i += 1) {
+            block = simon.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
         }
+        dummy +%= block[0] +% block[1];
 
         const simon_time = timer.read();
         const simon_ms = @as(f64, @floatFromInt(simon_time)) / 1_000_000.0;
@@ -245,15 +237,13 @@ pub fn main() !void {
         const simeck = lwbc32.Simeck32.init(key);
         var timer = try std.time.Timer.start();
 
+        var block = plaintext;
         var i: usize = 0;
-        while (i < iterations) : (i += 4) {
-            const ct1 = simeck.encrypt(plaintext);
-            const ct2 = simeck.encrypt(.{ ct1[0], ct1[1] });
-            const ct3 = simeck.encrypt(.{ ct2[0], ct2[1] });
-            const ct4 = simeck.encrypt(.{ ct3[0], ct3[1] });
-            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
-            std.mem.doNotOptimizeAway(dummy);
+        while (i < iterations) : (i += 1) {
+            block = simeck.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
         }
+        dummy +%= block[0] +% block[1];
 
         const simeck_time = timer.read();
         const simeck_ms = @as(f64, @floatFromInt(simeck_time)) / 1_000_000.0;
@@ -267,15 +257,13 @@ pub fn main() !void {
         const simeck = lwbc32.Simeck64.init(key64);
         var timer = try std.time.Timer.start();
 
+        var block = plaintext64;
         var i: usize = 0;
-        while (i < iterations) : (i += 4) {
-            const ct1 = simeck.encrypt(plaintext64);
-            const ct2 = simeck.encrypt(.{ ct1[0], ct1[1] });
-            const ct3 = simeck.encrypt(.{ ct2[0], ct2[1] });
-            const ct4 = simeck.encrypt(.{ ct3[0], ct3[1] });
-            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
-            std.mem.doNotOptimizeAway(dummy);
+        while (i < iterations) : (i += 1) {
+            block = simeck.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
         }
+        dummy +%= block[0] +% block[1];
 
         const simeck_time = timer.read();
         const simeck_ms = @as(f64, @floatFromInt(simeck_time)) / 1_000_000.0;
@@ -290,15 +278,13 @@ pub fn main() !void {
         const speck = lwbc32.Speck32Whitened.init(whitened_key);
         var timer = try std.time.Timer.start();
 
+        var block = plaintext;
         var i: usize = 0;
-        while (i < iterations) : (i += 4) {
-            const ct1 = speck.encrypt(plaintext);
-            const ct2 = speck.encrypt(.{ ct1[0], ct1[1] });
-            const ct3 = speck.encrypt(.{ ct2[0], ct2[1] });
-            const ct4 = speck.encrypt(.{ ct3[0], ct3[1] });
-            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
-            std.mem.doNotOptimizeAway(dummy);
+        while (i < iterations) : (i += 1) {
+            block = speck.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
         }
+        dummy +%= block[0] +% block[1];
 
         const time = timer.read();
         const ms = @as(f64, @floatFromInt(time)) / 1_000_000.0;
@@ -312,15 +298,13 @@ pub fn main() !void {
         const speck = lwbc32.Speck64Whitened.init(whitened_key);
         var timer = try std.time.Timer.start();
 
+        var block = plaintext64;
         var i: usize = 0;
-        while (i < iterations) : (i += 4) {
-            const ct1 = speck.encrypt(plaintext64);
-            const ct2 = speck.encrypt(.{ ct1[0], ct1[1] });
-            const ct3 = speck.encrypt(.{ ct2[0], ct2[1] });
-            const ct4 = speck.encrypt(.{ ct3[0], ct3[1] });
-            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
-            std.mem.doNotOptimizeAway(dummy);
+        while (i < iterations) : (i += 1) {
+            block = speck.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
         }
+        dummy +%= block[0] +% block[1];
 
         const time = timer.read();
         const ms = @as(f64, @floatFromInt(time)) / 1_000_000.0;
@@ -333,15 +317,13 @@ pub fn main() !void {
         const simon = lwbc32.Simon32Whitened.init(whitened_key);
         var timer = try std.time.Timer.start();
 
+        var block = plaintext;
         var i: usize = 0;
-        while (i < iterations) : (i += 4) {
-            const ct1 = simon.encrypt(plaintext);
-            const ct2 = simon.encrypt(.{ ct1[0], ct1[1] });
-            const ct3 = simon.encrypt(.{ ct2[0], ct2[1] });
-            const ct4 = simon.encrypt(.{ ct3[0], ct3[1] });
-            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
-            std.mem.doNotOptimizeAway(dummy);
+        while (i < iterations) : (i += 1) {
+            block = simon.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
         }
+        dummy +%= block[0] +% block[1];
 
         const time = timer.read();
         const ms = @as(f64, @floatFromInt(time)) / 1_000_000.0;
@@ -355,15 +337,13 @@ pub fn main() !void {
         const simon = lwbc32.Simon64Whitened.init(whitened_key);
         var timer = try std.time.Timer.start();
 
+        var block = plaintext64;
         var i: usize = 0;
-        while (i < iterations) : (i += 4) {
-            const ct1 = simon.encrypt(plaintext64);
-            const ct2 = simon.encrypt(.{ ct1[0], ct1[1] });
-            const ct3 = simon.encrypt(.{ ct2[0], ct2[1] });
-            const ct4 = simon.encrypt(.{ ct3[0], ct3[1] });
-            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
-            std.mem.doNotOptimizeAway(dummy);
+        while (i < iterations) : (i += 1) {
+            block = simon.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
         }
+        dummy +%= block[0] +% block[1];
 
         const time = timer.read();
         const ms = @as(f64, @floatFromInt(time)) / 1_000_000.0;
@@ -376,15 +356,13 @@ pub fn main() !void {
         const simeck = lwbc32.Simeck32Whitened.init(whitened_key);
         var timer = try std.time.Timer.start();
 
+        var block = plaintext;
         var i: usize = 0;
-        while (i < iterations) : (i += 4) {
-            const ct1 = simeck.encrypt(plaintext);
-            const ct2 = simeck.encrypt(.{ ct1[0], ct1[1] });
-            const ct3 = simeck.encrypt(.{ ct2[0], ct2[1] });
-            const ct4 = simeck.encrypt(.{ ct3[0], ct3[1] });
-            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
-            std.mem.doNotOptimizeAway(dummy);
+        while (i < iterations) : (i += 1) {
+            block = simeck.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
         }
+        dummy +%= block[0] +% block[1];
 
         const time = timer.read();
         const ms = @as(f64, @floatFromInt(time)) / 1_000_000.0;
@@ -398,15 +376,13 @@ pub fn main() !void {
         const simeck = lwbc32.Simeck64Whitened.init(whitened_key);
         var timer = try std.time.Timer.start();
 
+        var block = plaintext64;
         var i: usize = 0;
-        while (i < iterations) : (i += 4) {
-            const ct1 = simeck.encrypt(plaintext64);
-            const ct2 = simeck.encrypt(.{ ct1[0], ct1[1] });
-            const ct3 = simeck.encrypt(.{ ct2[0], ct2[1] });
-            const ct4 = simeck.encrypt(.{ ct3[0], ct3[1] });
-            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
-            std.mem.doNotOptimizeAway(dummy);
+        while (i < iterations) : (i += 1) {
+            block = simeck.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
         }
+        dummy +%= block[0] +% block[1];
 
         const time = timer.read();
         const ms = @as(f64, @floatFromInt(time)) / 1_000_000.0;

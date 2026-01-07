@@ -71,6 +71,21 @@ const ct_bytes = speck32.encryptBlock(.{ 0x74, 0x65, 0x4c, 0x69 });
 const pt_bytes = speck32.decryptBlock(ct_bytes);
 ```
 
+## Performance
+
+Benchmark results on Apple M-series (10 million encryptions, ReleaseFast):
+
+| Cipher   | Time     | Ops/sec | Throughput |
+| -------- | -------- | ------- | ---------- |
+| SPECK32  | 258 ms   | 38.8M   | 1.24 Gbps  |
+| SPECK64  | 200 ms   | 50.1M   | 3.21 Gbps  |
+| SIMON32  | 476 ms   | 21.0M   | 0.67 Gbps  |
+| SIMON64  | 432 ms   | 23.2M   | 1.48 Gbps  |
+| SIMECK32 | 460 ms   | 21.8M   | 0.70 Gbps  |
+| SIMECK64 | 427 ms   | 23.4M   | 1.50 Gbps  |
+
+SPECK is faster due to fewer rounds and simpler ARX operations. Whitened variants have minimal overhead (~2-3%).
+
 ## Security Notes
 
 **Important Security Considerations**:
