@@ -7,7 +7,7 @@ pub fn main() !void {
     defer _ = debug_allocator.deinit();
     const gpa = debug_allocator.allocator();
 
-    var threaded: Io.Threaded = .init(gpa, .{});
+    var threaded: Io.Threaded = .init(gpa, .{ .environ = .empty });
     defer threaded.deinit();
     const io = threaded.io();
 
@@ -15,8 +15,8 @@ pub fn main() !void {
     var stdout_writer = Io.File.stdout().writerStreaming(io, &stdout_buffer);
     const stdout = &stdout_writer.interface;
 
-    try stdout.print("SIMON32, SPECK32, and SIMECK32 Lightweight Block Ciphers\n", .{});
-    try stdout.print("=========================================================\n\n", .{});
+    try stdout.print("Lightweight Block Ciphers: SPECK, SIMON, and SIMECK\n", .{});
+    try stdout.print("===================================================\n\n", .{});
 
     const key: [4]u16 = .{ 0x0100, 0x0908, 0x1110, 0x1918 };
     const plaintext: [2]u16 = .{ 0x6574, 0x694c };
@@ -38,6 +38,25 @@ pub fn main() !void {
         try stdout.print("  Ciphertext: {x:04} {x:04}\n", .{ ciphertext[0], ciphertext[1] });
         try stdout.print("  Decrypted:  {x:04} {x:04}\n", .{ decrypted[0], decrypted[1] });
         try stdout.print("  Match: {}\n\n", .{std.meta.eql(plaintext, decrypted)});
+    }
+
+    {
+        const key64: [4]u32 = .{ 0x03020100, 0x0b0a0908, 0x13121110, 0x1b1a1918 };
+        const plaintext64: [2]u32 = .{ 0x3b726574, 0x7475432d };
+        const speck = lwbc32.Speck64.init(key64);
+        const ciphertext = speck.encrypt(plaintext64);
+        const decrypted = speck.decrypt(ciphertext);
+
+        try stdout.print("SPECK64/128:\n", .{});
+        try stdout.print("  Key:        ", .{});
+        inline for (key64) |k| {
+            try stdout.print("{x:08} ", .{k});
+        }
+        try stdout.print("\n", .{});
+        try stdout.print("  Plaintext:  {x:08} {x:08}\n", .{ plaintext64[0], plaintext64[1] });
+        try stdout.print("  Ciphertext: {x:08} {x:08}\n", .{ ciphertext[0], ciphertext[1] });
+        try stdout.print("  Decrypted:  {x:08} {x:08}\n", .{ decrypted[0], decrypted[1] });
+        try stdout.print("  Match: {}\n\n", .{std.meta.eql(plaintext64, decrypted)});
     }
 
     {
@@ -89,7 +108,29 @@ pub fn main() !void {
         const speck_time = timer.read();
         const speck_ms = @as(f64, @floatFromInt(speck_time)) / 1_000_000.0;
         const speck_ops_sec = @as(f64, iterations) / (speck_ms / 1000.0);
-        try stdout.print("SPECK32:  {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ speck_ms, speck_ops_sec, (speck_ops_sec * 32.0) / 1_000_000_000.0 });
+        try stdout.print("SPECK32:   {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ speck_ms, speck_ops_sec, (speck_ops_sec * 32.0) / 1_000_000_000.0 });
+    }
+
+    {
+        const key64: [4]u32 = .{ 0x03020100, 0x0b0a0908, 0x13121110, 0x1b1a1918 };
+        const plaintext64: [2]u32 = .{ 0x3b726574, 0x7475432d };
+        const speck = lwbc32.Speck64.init(key64);
+        var timer = try std.time.Timer.start();
+
+        var i: usize = 0;
+        while (i < iterations) : (i += 4) {
+            const ct1 = speck.encrypt(plaintext64);
+            const ct2 = speck.encrypt(.{ ct1[0], ct1[1] });
+            const ct3 = speck.encrypt(.{ ct2[0], ct2[1] });
+            const ct4 = speck.encrypt(.{ ct3[0], ct3[1] });
+            dummy +%= ct1[0] +% ct1[1] +% ct2[0] +% ct2[1] +% ct3[0] +% ct3[1] +% ct4[0] +% ct4[1];
+            std.mem.doNotOptimizeAway(dummy);
+        }
+
+        const speck_time = timer.read();
+        const speck_ms = @as(f64, @floatFromInt(speck_time)) / 1_000_000.0;
+        const speck_ops_sec = @as(f64, iterations) / (speck_ms / 1000.0);
+        try stdout.print("SPECK64:   {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ speck_ms, speck_ops_sec, (speck_ops_sec * 64.0) / 1_000_000_000.0 });
     }
 
     {
@@ -109,7 +150,7 @@ pub fn main() !void {
         const simon_time = timer.read();
         const simon_ms = @as(f64, @floatFromInt(simon_time)) / 1_000_000.0;
         const simon_ops_sec = @as(f64, iterations) / (simon_ms / 1000.0);
-        try stdout.print("SIMON32:  {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ simon_ms, simon_ops_sec, (simon_ops_sec * 32.0) / 1_000_000_000.0 });
+        try stdout.print("SIMON32:   {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ simon_ms, simon_ops_sec, (simon_ops_sec * 32.0) / 1_000_000_000.0 });
     }
 
     {
@@ -129,7 +170,7 @@ pub fn main() !void {
         const simeck_time = timer.read();
         const simeck_ms = @as(f64, @floatFromInt(simeck_time)) / 1_000_000.0;
         const simeck_ops_sec = @as(f64, iterations) / (simeck_ms / 1000.0);
-        try stdout.print("SIMECK32: {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ simeck_ms, simeck_ops_sec, (simeck_ops_sec * 32.0) / 1_000_000_000.0 });
+        try stdout.print("SIMECK32:  {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ simeck_ms, simeck_ops_sec, (simeck_ops_sec * 32.0) / 1_000_000_000.0 });
     }
 
     try stdout_writer.interface.flush();

@@ -1,10 +1,12 @@
 const std = @import("std");
 
 const speck32 = @import("speck32.zig");
+const speck64 = @import("speck64.zig");
 const simon32 = @import("simon32.zig");
 const simeck32 = @import("simeck32.zig");
 
 const Speck32 = speck32.Speck32;
+const Speck64 = speck64.Speck64;
 const Simon32 = simon32.Simon32;
 const Simeck32 = simeck32.Simeck32;
 
@@ -18,6 +20,26 @@ test "SPECK32/64 official test vector" {
     const expected: [2]u16 = .{ 0xa868, 0x42f2 };
 
     const cipher = Speck32.init(key);
+    const ciphertext = cipher.encrypt(plaintext);
+
+    try std.testing.expectEqual(expected[0], ciphertext[0]);
+    try std.testing.expectEqual(expected[1], ciphertext[1]);
+
+    const decrypted = cipher.decrypt(ciphertext);
+    try std.testing.expectEqual(plaintext[0], decrypted[0]);
+    try std.testing.expectEqual(plaintext[1], decrypted[1]);
+}
+
+test "SPECK64/128 official test vector" {
+    // Official test vector from NSA paper
+    // Key: 0x1b1a1918 13121110 0b0a0908 03020100 (little-endian words)
+    // Plaintext: 0x3b726574 7475432d (little-endian: "-Cut" "ter;")
+    // Expected ciphertext: 0x8c6fa548 454e028b
+    const key: [4]u32 = .{ 0x03020100, 0x0b0a0908, 0x13121110, 0x1b1a1918 };
+    const plaintext: [2]u32 = .{ 0x3b726574, 0x7475432d };
+    const expected: [2]u32 = .{ 0x8c6fa548, 0x454e028b };
+
+    const cipher = Speck64.init(key);
     const ciphertext = cipher.encrypt(plaintext);
 
     try std.testing.expectEqual(expected[0], ciphertext[0]);
