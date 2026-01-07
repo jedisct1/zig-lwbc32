@@ -9,6 +9,7 @@ A Zig implementation of lightweight block ciphers from the SPECK/SIMON family. T
 | SPECK32/64   | 32 bits    | 64 bits   | 22     | 16-bit    | ARX (Addition, Rotation, XOR) |
 | SPECK64/128  | 64 bits    | 128 bits  | 27     | 32-bit    | ARX (Addition, Rotation, XOR) |
 | SIMON32/64   | 32 bits    | 64 bits   | 32     | 16-bit    | Balanced Feistel              |
+| SIMON64/128  | 64 bits    | 128 bits  | 44     | 32-bit    | Balanced Feistel              |
 | SIMECK32/64  | 32 bits    | 64 bits   | 32     | 16-bit    | Feistel                       |
 
 ## Building and Running
@@ -35,7 +36,7 @@ zig build test
 
 1. **32-bit block size vulnerability**: The 32-bit variants use small blocks, making them vulnerable to birthday attacks with just 2^16 blocks. They should only be used in extremely constrained environments.
 
-2. **64-bit block size**: SPECK64/128 provides better security margins (birthday bound at 2^32 blocks) and 128-bit key security against brute force.
+2. **64-bit block size**: SPECK64/128 and SIMON64/128 provide better security margins (birthday bound at 2^32 blocks) and 128-bit key security against brute force.
 
 3. **Intended use**: These lightweight ciphers are intended for constrained environments where larger block sizes are not feasible.
 
