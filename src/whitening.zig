@@ -13,6 +13,8 @@ fn Whitened(comptime BaseCipher: type, comptime Word: type, comptime block_bytes
         post_key: [2]Word,
 
         const Self = @This();
+        const word_bytes = @sizeOf(Word);
+        const key_bytes = 8 * word_bytes;
 
         pub fn init(key: [8]Word) Self {
             return .{
@@ -20,6 +22,15 @@ fn Whitened(comptime BaseCipher: type, comptime Word: type, comptime block_bytes
                 .pre_key = key[4..6].*,
                 .post_key = key[6..8].*,
             };
+        }
+
+        pub fn fromBytes(key: [key_bytes]u8) Self {
+            var words: [8]Word = undefined;
+            inline for (0..8) |i| {
+                const start = i * word_bytes;
+                words[i] = std.mem.readInt(Word, key[start..][0..word_bytes], .little);
+            }
+            return init(words);
         }
 
         pub inline fn encrypt(self: *const Self, plaintext: [2]Word) [2]Word {
@@ -175,4 +186,29 @@ test "whitening changes ciphertext" {
     const whitened_ciphertext = whitened_cipher.encrypt(plaintext);
 
     try std.testing.expect(base_ciphertext[0] != whitened_ciphertext[0] or base_ciphertext[1] != whitened_ciphertext[1]);
+}
+
+test "Speck32Whitened fromBytes" {
+    const key_bytes: [16]u8 = .{ 0x00, 0x01, 0x08, 0x09, 0x10, 0x11, 0x18, 0x19, 0xad, 0xde, 0xef, 0xbe, 0xfe, 0xca, 0xbe, 0xba };
+    const key_words: [8]u16 = .{ 0x0100, 0x0908, 0x1110, 0x1918, 0xdead, 0xbeef, 0xcafe, 0xbabe };
+    const plaintext: [2]u16 = .{ 0x6574, 0x694c };
+
+    const cipher_bytes = Speck32Whitened.fromBytes(key_bytes);
+    const cipher_words = Speck32Whitened.init(key_words);
+
+    try std.testing.expectEqual(cipher_words.encrypt(plaintext), cipher_bytes.encrypt(plaintext));
+}
+
+test "Speck64Whitened fromBytes" {
+    const key_bytes: [32]u8 = .{
+        0x00, 0x01, 0x02, 0x03, 0x08, 0x09, 0x0a, 0x0b, 0x10, 0x11, 0x12, 0x13, 0x18, 0x19, 0x1a, 0x1b,
+        0xef, 0xbe, 0xad, 0xde, 0xbe, 0xba, 0xfe, 0xca, 0x78, 0x56, 0x34, 0x12, 0xf0, 0xde, 0xbc, 0x9a,
+    };
+    const key_words: [8]u32 = .{ 0x03020100, 0x0b0a0908, 0x13121110, 0x1b1a1918, 0xdeadbeef, 0xcafebabe, 0x12345678, 0x9abcdef0 };
+    const plaintext: [2]u32 = .{ 0x3b726574, 0x7475432d };
+
+    const cipher_bytes = Speck64Whitened.fromBytes(key_bytes);
+    const cipher_words = Speck64Whitened.init(key_words);
+
+    try std.testing.expectEqual(cipher_words.encrypt(plaintext), cipher_bytes.encrypt(plaintext));
 }

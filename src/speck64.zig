@@ -14,6 +14,15 @@ pub const Speck64 = struct {
         return cipher;
     }
 
+    pub fn fromBytes(key: [16]u8) Self {
+        return init(.{
+            std.mem.readInt(u32, key[0..4], .little),
+            std.mem.readInt(u32, key[4..8], .little),
+            std.mem.readInt(u32, key[8..12], .little),
+            std.mem.readInt(u32, key[12..16], .little),
+        });
+    }
+
     inline fn expandKey(self: *Self, key: [4]u32) void {
         var k = key[0];
         var l0 = key[1];
@@ -174,4 +183,15 @@ test "Speck64 block roundtrip" {
     const decrypted_bytes = cipher.decryptBlock(ciphertext_bytes);
 
     try std.testing.expectEqualSlices(u8, &plaintext_bytes, &decrypted_bytes);
+}
+
+test "Speck64 fromBytes" {
+    const key_bytes: [16]u8 = .{ 0x00, 0x01, 0x02, 0x03, 0x08, 0x09, 0x0a, 0x0b, 0x10, 0x11, 0x12, 0x13, 0x18, 0x19, 0x1a, 0x1b };
+    const key_words: [4]u32 = .{ 0x03020100, 0x0b0a0908, 0x13121110, 0x1b1a1918 };
+    const plaintext: [2]u32 = .{ 0x3b726574, 0x7475432d };
+
+    const cipher_bytes = Speck64.fromBytes(key_bytes);
+    const cipher_words = Speck64.init(key_words);
+
+    try std.testing.expectEqual(cipher_words.encrypt(plaintext), cipher_bytes.encrypt(plaintext));
 }

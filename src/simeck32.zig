@@ -13,6 +13,15 @@ pub const Simeck32 = struct {
         return cipher;
     }
 
+    pub fn fromBytes(key: [8]u8) Self {
+        return init(.{
+            std.mem.readInt(u16, key[0..2], .little),
+            std.mem.readInt(u16, key[2..4], .little),
+            std.mem.readInt(u16, key[4..6], .little),
+            std.mem.readInt(u16, key[6..8], .little),
+        });
+    }
+
     inline fn expandKey(self: *Self, key: [4]u16) void {
         self.round_keys[0] = key[0];
         self.round_keys[1] = key[1];

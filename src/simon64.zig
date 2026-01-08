@@ -13,6 +13,15 @@ pub const Simon64 = struct {
         return cipher;
     }
 
+    pub fn fromBytes(key: [16]u8) Self {
+        return init(.{
+            std.mem.readInt(u32, key[0..4], .little),
+            std.mem.readInt(u32, key[4..8], .little),
+            std.mem.readInt(u32, key[8..12], .little),
+            std.mem.readInt(u32, key[12..16], .little),
+        });
+    }
+
     inline fn expandKey(self: *Self, key: [4]u32) void {
         const mod_mask: u32 = 0xFFFFFFFF;
         const round_constant: u32 = mod_mask ^ 3;
