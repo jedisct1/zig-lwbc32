@@ -10,6 +10,7 @@ A Zig implementation of lightweight block ciphers from the SPECK/SIMON family. T
 | SPECK48/96   | 48 bits    | 96 bits  | 23     | 24-bit    | ARX (Addition, Rotation, XOR) |
 | SPECK64/128  | 64 bits    | 128 bits | 27     | 32-bit    | ARX (Addition, Rotation, XOR) |
 | SIMON32/64   | 32 bits    | 64 bits  | 32     | 16-bit    | Balanced Feistel              |
+| SIMON48/96   | 48 bits    | 96 bits  | 36     | 24-bit    | Balanced Feistel              |
 | SIMON64/128  | 64 bits    | 128 bits | 44     | 32-bit    | Balanced Feistel              |
 | SIMECK32/64  | 32 bits    | 64 bits  | 32     | 16-bit    | Feistel (hybrid)              |
 | SIMECK64/128 | 64 bits    | 128 bits | 44     | 32-bit    | Feistel (hybrid)              |

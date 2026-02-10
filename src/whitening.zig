@@ -3,6 +3,7 @@ const Speck32 = @import("speck32.zig").Speck32;
 const Speck48 = @import("speck48.zig").Speck48;
 const Speck64 = @import("speck64.zig").Speck64;
 const Simon32 = @import("simon32.zig").Simon32;
+const Simon48 = @import("simon48.zig").Simon48;
 const Simon64 = @import("simon64.zig").Simon64;
 const Simeck32 = @import("simeck32.zig").Simeck32;
 const Simeck64 = @import("simeck64.zig").Simeck64;
@@ -88,6 +89,7 @@ pub const Speck32Whitened = Whitened(Speck32, u16, 4);
 pub const Speck48Whitened = Whitened(Speck48, u24, 6);
 pub const Speck64Whitened = Whitened(Speck64, u32, 8);
 pub const Simon32Whitened = Whitened(Simon32, u16, 4);
+pub const Simon48Whitened = Whitened(Simon48, u24, 6);
 pub const Simon64Whitened = Whitened(Simon64, u32, 8);
 pub const Simeck32Whitened = Whitened(Simeck32, u16, 4);
 pub const Simeck64Whitened = Whitened(Simeck64, u32, 8);
@@ -130,6 +132,17 @@ test "Simon32Whitened roundtrip" {
     const plaintext: [2]u16 = .{ 0x6565, 0x6877 };
 
     const cipher = Simon32Whitened.init(key);
+    const ciphertext = cipher.encrypt(plaintext);
+    const decrypted = cipher.decrypt(ciphertext);
+
+    try std.testing.expectEqual(plaintext, decrypted);
+}
+
+test "Simon48Whitened roundtrip" {
+    const key: [8]u24 = .{ 0x020100, 0x0a0908, 0x121110, 0x1a1918, 0xdeadbe, 0xcafeba, 0x123456, 0x9abcde };
+    const plaintext: [2]u24 = .{ 0x726963, 0x20646e };
+
+    const cipher = Simon48Whitened.init(key);
     const ciphertext = cipher.encrypt(plaintext);
     const decrypted = cipher.decrypt(ciphertext);
 
