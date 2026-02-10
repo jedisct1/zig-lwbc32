@@ -75,6 +75,11 @@ const speck32w = lwbc32.Speck32Whitened.init(.{
 // Byte-oriented interface
 const ct_bytes = speck32.encryptBlock(.{ 0x74, 0x65, 0x4c, 0x69 });
 const pt_bytes = speck32.decryptBlock(ct_bytes);
+
+// Key from byte array (all ciphers support this)
+const speck48b = lwbc32.Speck48.fromBytes(.{
+    0x00, 0x01, 0x02, 0x08, 0x09, 0x0a, 0x10, 0x11, 0x12, 0x18, 0x19, 0x1a,
+});
 ```
 
 ## Performance
