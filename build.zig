@@ -117,6 +117,8 @@ pub fn build(b: *std.Build) void {
         "src/simon48.zig",
         "src/simon64.zig",
         "src/simeck32.zig",
+        "src/speck96.zig",
+        "src/simon96.zig",
         "src/simeck64.zig",
         "src/whitening.zig",
     };
@@ -158,6 +160,12 @@ pub fn build(b: *std.Build) void {
                 }) },
                 .{ .name = "simon64.zig", .module = b.createModule(.{
                     .root_source_file = b.path("src/simon64.zig"),
+                }) },
+                .{ .name = "speck96.zig", .module = b.createModule(.{
+                    .root_source_file = b.path("src/speck96.zig"),
+                }) },
+                .{ .name = "simon96.zig", .module = b.createModule(.{
+                    .root_source_file = b.path("src/simon96.zig"),
                 }) },
                 .{ .name = "simeck32.zig", .module = b.createModule(.{
                     .root_source_file = b.path("src/simeck32.zig"),

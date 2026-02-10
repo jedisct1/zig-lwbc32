@@ -79,6 +79,25 @@ pub fn main() !void {
     }
 
     {
+        const key96: [3]u48 = .{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110 };
+        const plaintext96: [2]u48 = .{ 0x656d6974206e, 0x69202c726576 };
+        const speck = lwbc32.Speck96.init(key96);
+        const ciphertext = speck.encrypt(plaintext96);
+        const decrypted = speck.decrypt(ciphertext);
+
+        try stdout.print("SPECK96/144:\n", .{});
+        try stdout.print("  Key:        ", .{});
+        inline for (key96) |k| {
+            try stdout.print("{x:012} ", .{k});
+        }
+        try stdout.print("\n", .{});
+        try stdout.print("  Plaintext:  {x:012} {x:012}\n", .{ plaintext96[0], plaintext96[1] });
+        try stdout.print("  Ciphertext: {x:012} {x:012}\n", .{ ciphertext[0], ciphertext[1] });
+        try stdout.print("  Decrypted:  {x:012} {x:012}\n", .{ decrypted[0], decrypted[1] });
+        try stdout.print("  Match: {}\n\n", .{std.meta.eql(plaintext96, decrypted)});
+    }
+
+    {
         const simon = lwbc32.Simon32.init(key);
         const plaintext2: [2]u16 = .{ 0x6565, 0x6877 };
         const ciphertext = simon.encrypt(plaintext2);
@@ -127,6 +146,25 @@ pub fn main() !void {
         try stdout.print("  Ciphertext: {x:08} {x:08}\n", .{ ciphertext[0], ciphertext[1] });
         try stdout.print("  Decrypted:  {x:08} {x:08}\n", .{ decrypted[0], decrypted[1] });
         try stdout.print("  Match: {}\n\n", .{std.meta.eql(plaintext64, decrypted)});
+    }
+
+    {
+        const key96: [3]u48 = .{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110 };
+        const plaintext96: [2]u48 = .{ 0x746168742074, 0x73756420666f };
+        const simon = lwbc32.Simon96.init(key96);
+        const ciphertext = simon.encrypt(plaintext96);
+        const decrypted = simon.decrypt(ciphertext);
+
+        try stdout.print("SIMON96/144:\n", .{});
+        try stdout.print("  Key:        ", .{});
+        inline for (key96) |k| {
+            try stdout.print("{x:012} ", .{k});
+        }
+        try stdout.print("\n", .{});
+        try stdout.print("  Plaintext:  {x:012} {x:012}\n", .{ plaintext96[0], plaintext96[1] });
+        try stdout.print("  Ciphertext: {x:012} {x:012}\n", .{ ciphertext[0], ciphertext[1] });
+        try stdout.print("  Decrypted:  {x:012} {x:012}\n", .{ decrypted[0], decrypted[1] });
+        try stdout.print("  Match: {}\n\n", .{std.meta.eql(plaintext96, decrypted)});
     }
 
     {
@@ -264,6 +302,25 @@ pub fn main() !void {
     }
 
     {
+        const key96: [3]u48 = .{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110 };
+        const plaintext96: [2]u48 = .{ 0x656d6974206e, 0x69202c726576 };
+        const speck = lwbc32.Speck96.init(key96);
+        const start = Io.Clock.awake.now(io);
+
+        var block = plaintext96;
+        var i: usize = 0;
+        while (i < iterations) : (i += 1) {
+            block = speck.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
+        }
+        dummy +%= @as(u32, @truncate(@as(u64, block[0]) +% @as(u64, block[1])));
+
+        const speck_ms = @as(f64, @floatFromInt(start.untilNow(io, .awake).nanoseconds)) / 1_000_000.0;
+        const speck_ops_sec = @as(f64, iterations) / (speck_ms / 1000.0);
+        try stdout.print("SPECK96:   {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ speck_ms, speck_ops_sec, (speck_ops_sec * 96.0) / 1_000_000_000.0 });
+    }
+
+    {
         const simon = lwbc32.Simon32.init(key);
         const start = Io.Clock.awake.now(io);
 
@@ -316,6 +373,25 @@ pub fn main() !void {
         const simon_ms = @as(f64, @floatFromInt(start.untilNow(io, .awake).nanoseconds)) / 1_000_000.0;
         const simon_ops_sec = @as(f64, iterations) / (simon_ms / 1000.0);
         try stdout.print("SIMON64:   {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ simon_ms, simon_ops_sec, (simon_ops_sec * 64.0) / 1_000_000_000.0 });
+    }
+
+    {
+        const key96: [3]u48 = .{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110 };
+        const plaintext96: [2]u48 = .{ 0x746168742074, 0x73756420666f };
+        const simon = lwbc32.Simon96.init(key96);
+        const start = Io.Clock.awake.now(io);
+
+        var block = plaintext96;
+        var i: usize = 0;
+        while (i < iterations) : (i += 1) {
+            block = simon.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
+        }
+        dummy +%= @as(u32, @truncate(@as(u64, block[0]) +% @as(u64, block[1])));
+
+        const simon_ms = @as(f64, @floatFromInt(start.untilNow(io, .awake).nanoseconds)) / 1_000_000.0;
+        const simon_ops_sec = @as(f64, iterations) / (simon_ms / 1000.0);
+        try stdout.print("SIMON96:   {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ simon_ms, simon_ops_sec, (simon_ops_sec * 96.0) / 1_000_000_000.0 });
     }
 
     {
@@ -413,6 +489,25 @@ pub fn main() !void {
     }
 
     {
+        const whitened_key: [7]u48 = .{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110, 0xdeadbeefcafe, 0xbabe12345678, 0x9abcdef01234, 0x567890abcdef };
+        const plaintext96: [2]u48 = .{ 0x656d6974206e, 0x69202c726576 };
+        const speck = lwbc32.Speck96Whitened.init(whitened_key);
+        const start = Io.Clock.awake.now(io);
+
+        var block = plaintext96;
+        var i: usize = 0;
+        while (i < iterations) : (i += 1) {
+            block = speck.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
+        }
+        dummy +%= @as(u32, @truncate(@as(u64, block[0]) +% @as(u64, block[1])));
+
+        const ms = @as(f64, @floatFromInt(start.untilNow(io, .awake).nanoseconds)) / 1_000_000.0;
+        const ops_sec = @as(f64, iterations) / (ms / 1000.0);
+        try stdout.print("SPECK96W:  {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ ms, ops_sec, (ops_sec * 96.0) / 1_000_000_000.0 });
+    }
+
+    {
         const whitened_key: [8]u16 = .{ 0x0100, 0x0908, 0x1110, 0x1918, 0x1234, 0x5678, 0xabcd, 0xef01 };
         const simon = lwbc32.Simon32Whitened.init(whitened_key);
         const start = Io.Clock.awake.now(io);
@@ -466,6 +561,25 @@ pub fn main() !void {
         const ms = @as(f64, @floatFromInt(start.untilNow(io, .awake).nanoseconds)) / 1_000_000.0;
         const ops_sec = @as(f64, iterations) / (ms / 1000.0);
         try stdout.print("SIMON64W:  {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ ms, ops_sec, (ops_sec * 64.0) / 1_000_000_000.0 });
+    }
+
+    {
+        const whitened_key: [7]u48 = .{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110, 0xaabbccddeeff, 0x112233445566, 0x778899aabbcc, 0xddeeff001122 };
+        const plaintext96: [2]u48 = .{ 0x746168742074, 0x73756420666f };
+        const simon = lwbc32.Simon96Whitened.init(whitened_key);
+        const start = Io.Clock.awake.now(io);
+
+        var block = plaintext96;
+        var i: usize = 0;
+        while (i < iterations) : (i += 1) {
+            block = simon.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
+        }
+        dummy +%= @as(u32, @truncate(@as(u64, block[0]) +% @as(u64, block[1])));
+
+        const ms = @as(f64, @floatFromInt(start.untilNow(io, .awake).nanoseconds)) / 1_000_000.0;
+        const ops_sec = @as(f64, iterations) / (ms / 1000.0);
+        try stdout.print("SIMON96W:  {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ ms, ops_sec, (ops_sec * 96.0) / 1_000_000_000.0 });
     }
 
     {

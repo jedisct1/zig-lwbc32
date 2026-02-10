@@ -9,9 +9,11 @@ A Zig implementation of lightweight block ciphers from the SPECK/SIMON family. T
 | SPECK32/64   | 32 bits    | 64 bits  | 22     | 16-bit    | ARX (Addition, Rotation, XOR) |
 | SPECK48/96   | 48 bits    | 96 bits  | 23     | 24-bit    | ARX (Addition, Rotation, XOR) |
 | SPECK64/128  | 64 bits    | 128 bits | 27     | 32-bit    | ARX (Addition, Rotation, XOR) |
+| SPECK96/144  | 96 bits    | 144 bits | 29     | 48-bit    | ARX (Addition, Rotation, XOR) |
 | SIMON32/64   | 32 bits    | 64 bits  | 32     | 16-bit    | Balanced Feistel              |
 | SIMON48/96   | 48 bits    | 96 bits  | 36     | 24-bit    | Balanced Feistel              |
 | SIMON64/128  | 64 bits    | 128 bits | 44     | 32-bit    | Balanced Feistel              |
+| SIMON96/144  | 96 bits    | 144 bits | 54     | 48-bit    | Balanced Feistel              |
 | SIMECK32/64  | 32 bits    | 64 bits  | 32     | 16-bit    | Feistel (hybrid)              |
 | SIMECK64/128 | 64 bits    | 128 bits | 44     | 32-bit    | Feistel (hybrid)              |
 
@@ -24,8 +26,11 @@ All ciphers have whitened variants with extended keys that add XOR whitening bef
 | Speck32Whitened  | 32 bits    | 128 bits | 64-bit cipher + 32-bit pre/post  |
 | Speck48Whitened  | 48 bits    | 192 bits | 96-bit cipher + 48-bit pre/post  |
 | Speck64Whitened  | 64 bits    | 256 bits | 128-bit cipher + 64-bit pre/post |
+| Speck96Whitened  | 96 bits    | 336 bits | 144-bit cipher + 96-bit pre/post |
 | Simon32Whitened  | 32 bits    | 128 bits | 64-bit cipher + 32-bit pre/post  |
+| Simon48Whitened  | 48 bits    | 192 bits | 96-bit cipher + 48-bit pre/post  |
 | Simon64Whitened  | 64 bits    | 256 bits | 128-bit cipher + 64-bit pre/post |
+| Simon96Whitened  | 96 bits    | 336 bits | 144-bit cipher + 96-bit pre/post |
 | Simeck32Whitened | 32 bits    | 128 bits | 64-bit cipher + 32-bit pre/post  |
 | Simeck64Whitened | 64 bits    | 256 bits | 128-bit cipher + 64-bit pre/post |
 
@@ -66,6 +71,10 @@ const ct48 = speck48.encrypt(.{ 0x6d2073, 0x696874 });
 // 64-bit block ciphers
 const simon64 = lwbc32.Simon64.init(.{ 0x03020100, 0x0b0a0908, 0x13121110, 0x1b1a1918 });
 
+// 96-bit block ciphers (48-bit words, 3-word keys)
+const speck96 = lwbc32.Speck96.init(.{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110 });
+const ct96 = speck96.encrypt(.{ 0x656d6974206e, 0x69202c726576 });
+
 // Whitened variants (extended keys)
 const speck32w = lwbc32.Speck32Whitened.init(.{
     0x0100, 0x0908, 0x1110, 0x1918,  // cipher key
@@ -92,8 +101,11 @@ Benchmark results on Apple M-series (10 million encryptions, ReleaseFast):
 | SPECK32  | 258 ms   | 38.7M   | 1.24 Gbps  |
 | SPECK48  | 236 ms   | 42.5M   | 2.04 Gbps  |
 | SPECK64  | 194 ms   | 51.5M   | 3.29 Gbps  |
+| SPECK96  | 290 ms   | 34.5M   | 3.32 Gbps  |
 | SIMON32  | 464 ms   | 21.6M   | 0.69 Gbps  |
+| SIMON48  | 569 ms   | 17.6M   | 0.84 Gbps  |
 | SIMON64  | 427 ms   | 23.4M   | 1.50 Gbps  |
+| SIMON96  | 844 ms   | 11.9M   | 1.14 Gbps  |
 | SIMECK32 | 443 ms   | 22.6M   | 0.72 Gbps  |
 | SIMECK64 | 420 ms   | 23.7M   | 1.53 Gbps  |
 
@@ -105,11 +117,13 @@ SPECK is faster due to fewer rounds and simpler ARX operations. Whitened variant
 
 1. **32-bit block size vulnerability**: The 32-bit variants use small blocks, making them vulnerable to birthday attacks with just 2^16 blocks. They should only be used in extremely constrained environments.
 
-2. **48-bit block size**: SPECK48/96 offers slightly better margins (birthday bound at 2^24 blocks) but is still limited for high-volume applications.
+2. **48-bit block size**: SPECK48/96 and SIMON48/96 offer slightly better margins (birthday bound at 2^24 blocks) but are still limited for high-volume applications.
 
 3. **64-bit block size**: SPECK64/128 and SIMON64/128 provide better security margins (birthday bound at 2^32 blocks) and 128-bit key security against brute force.
 
-4. **Intended use**: These lightweight ciphers are intended for constrained environments where larger block sizes are not feasible.
+4. **96-bit block size**: SPECK96/144 and SIMON96/144 push the birthday bound to 2^48 blocks with 144-bit keys, offering a middle ground between lightweight and conventional ciphers.
+
+5. **Intended use**: These lightweight ciphers are intended for constrained environments where larger block sizes are not feasible.
 
 For applications requiring strong security, consider using other authenticated encryption schemes.
 

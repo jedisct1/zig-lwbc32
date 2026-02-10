@@ -3,15 +3,19 @@ const std = @import("std");
 const speck32 = @import("speck32.zig");
 const speck48 = @import("speck48.zig");
 const speck64 = @import("speck64.zig");
+const speck96 = @import("speck96.zig");
 const simon32 = @import("simon32.zig");
 const simon48 = @import("simon48.zig");
+const simon96 = @import("simon96.zig");
 const simeck32 = @import("simeck32.zig");
 
 const Speck32 = speck32.Speck32;
 const Speck48 = speck48.Speck48;
 const Speck64 = speck64.Speck64;
+const Speck96 = speck96.Speck96;
 const Simon32 = simon32.Simon32;
 const Simon48 = simon48.Simon48;
+const Simon96 = simon96.Simon96;
 const Simeck32 = simeck32.Simeck32;
 
 test "SPECK32/64 official test vector" {
@@ -96,6 +100,38 @@ test "SIMON48/96 official test vector" {
     const expected: [2]u24 = .{ 0x6e06a5, 0xacf156 };
 
     const cipher = Simon48.init(key);
+    const ciphertext = cipher.encrypt(plaintext);
+
+    try std.testing.expectEqual(expected[0], ciphertext[0]);
+    try std.testing.expectEqual(expected[1], ciphertext[1]);
+
+    const decrypted = cipher.decrypt(ciphertext);
+    try std.testing.expectEqual(plaintext[0], decrypted[0]);
+    try std.testing.expectEqual(plaintext[1], decrypted[1]);
+}
+
+test "SPECK96/144 official test vector" {
+    const key: [3]u48 = .{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110 };
+    const plaintext: [2]u48 = .{ 0x656d6974206e, 0x69202c726576 };
+    const expected: [2]u48 = .{ 0x2bf31072228a, 0x7ae440252ee6 };
+
+    const cipher = Speck96.init(key);
+    const ciphertext = cipher.encrypt(plaintext);
+
+    try std.testing.expectEqual(expected[0], ciphertext[0]);
+    try std.testing.expectEqual(expected[1], ciphertext[1]);
+
+    const decrypted = cipher.decrypt(ciphertext);
+    try std.testing.expectEqual(plaintext[0], decrypted[0]);
+    try std.testing.expectEqual(plaintext[1], decrypted[1]);
+}
+
+test "SIMON96/144 official test vector" {
+    const key: [3]u48 = .{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110 };
+    const plaintext: [2]u48 = .{ 0x746168742074, 0x73756420666f };
+    const expected: [2]u48 = .{ 0xecad1c6c451e, 0x3f59c5db1ae9 };
+
+    const cipher = Simon96.init(key);
     const ciphertext = cipher.encrypt(plaintext);
 
     try std.testing.expectEqual(expected[0], ciphertext[0]);

@@ -2,13 +2,15 @@ const std = @import("std");
 const Speck32 = @import("speck32.zig").Speck32;
 const Speck48 = @import("speck48.zig").Speck48;
 const Speck64 = @import("speck64.zig").Speck64;
+const Speck96 = @import("speck96.zig").Speck96;
 const Simon32 = @import("simon32.zig").Simon32;
 const Simon48 = @import("simon48.zig").Simon48;
 const Simon64 = @import("simon64.zig").Simon64;
+const Simon96 = @import("simon96.zig").Simon96;
 const Simeck32 = @import("simeck32.zig").Simeck32;
 const Simeck64 = @import("simeck64.zig").Simeck64;
 
-fn Whitened(comptime BaseCipher: type, comptime Word: type, comptime block_bytes: usize) type {
+fn Whitened(comptime BaseCipher: type, comptime Word: type, comptime block_bytes: usize, comptime cipher_key_words: usize) type {
     return struct {
         cipher: BaseCipher,
         pre_key: [2]Word,
@@ -16,19 +18,20 @@ fn Whitened(comptime BaseCipher: type, comptime Word: type, comptime block_bytes
 
         const Self = @This();
         const word_bytes = @divExact(@bitSizeOf(Word), 8);
-        const key_bytes = 8 * word_bytes;
+        const total_words = cipher_key_words + 4;
+        const key_bytes = total_words * word_bytes;
 
-        pub fn init(key: [8]Word) Self {
+        pub fn init(key: [total_words]Word) Self {
             return .{
-                .cipher = BaseCipher.init(key[0..4].*),
-                .pre_key = key[4..6].*,
-                .post_key = key[6..8].*,
+                .cipher = BaseCipher.init(key[0..cipher_key_words].*),
+                .pre_key = key[cipher_key_words..][0..2].*,
+                .post_key = key[cipher_key_words + 2 ..][0..2].*,
             };
         }
 
         pub fn fromBytes(key: [key_bytes]u8) Self {
-            var words: [8]Word = undefined;
-            inline for (0..8) |i| {
+            var words: [total_words]Word = undefined;
+            inline for (0..total_words) |i| {
                 const start = i * word_bytes;
                 words[i] = std.mem.readInt(Word, key[start..][0..word_bytes], .little);
             }
@@ -85,14 +88,16 @@ fn Whitened(comptime BaseCipher: type, comptime Word: type, comptime block_bytes
     };
 }
 
-pub const Speck32Whitened = Whitened(Speck32, u16, 4);
-pub const Speck48Whitened = Whitened(Speck48, u24, 6);
-pub const Speck64Whitened = Whitened(Speck64, u32, 8);
-pub const Simon32Whitened = Whitened(Simon32, u16, 4);
-pub const Simon48Whitened = Whitened(Simon48, u24, 6);
-pub const Simon64Whitened = Whitened(Simon64, u32, 8);
-pub const Simeck32Whitened = Whitened(Simeck32, u16, 4);
-pub const Simeck64Whitened = Whitened(Simeck64, u32, 8);
+pub const Speck32Whitened = Whitened(Speck32, u16, 4, 4);
+pub const Speck48Whitened = Whitened(Speck48, u24, 6, 4);
+pub const Speck64Whitened = Whitened(Speck64, u32, 8, 4);
+pub const Speck96Whitened = Whitened(Speck96, u48, 12, 3);
+pub const Simon32Whitened = Whitened(Simon32, u16, 4, 4);
+pub const Simon48Whitened = Whitened(Simon48, u24, 6, 4);
+pub const Simon64Whitened = Whitened(Simon64, u32, 8, 4);
+pub const Simon96Whitened = Whitened(Simon96, u48, 12, 3);
+pub const Simeck32Whitened = Whitened(Simeck32, u16, 4, 4);
+pub const Simeck64Whitened = Whitened(Simeck64, u32, 8, 4);
 
 test "Speck32Whitened roundtrip" {
     const key: [8]u16 = .{ 0x0100, 0x0908, 0x1110, 0x1918, 0xdead, 0xbeef, 0xcafe, 0xbabe };
@@ -127,6 +132,17 @@ test "Speck64Whitened roundtrip" {
     try std.testing.expectEqual(plaintext, decrypted);
 }
 
+test "Speck96Whitened roundtrip" {
+    const key: [7]u48 = .{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110, 0xdeadbeefcafe, 0xbabe12345678, 0x9abcdef01234, 0x567890abcdef };
+    const plaintext: [2]u48 = .{ 0x656d6974206e, 0x69202c726576 };
+
+    const cipher = Speck96Whitened.init(key);
+    const ciphertext = cipher.encrypt(plaintext);
+    const decrypted = cipher.decrypt(ciphertext);
+
+    try std.testing.expectEqual(plaintext, decrypted);
+}
+
 test "Simon32Whitened roundtrip" {
     const key: [8]u16 = .{ 0x0100, 0x0908, 0x1110, 0x1918, 0x1234, 0x5678, 0xabcd, 0xef01 };
     const plaintext: [2]u16 = .{ 0x6565, 0x6877 };
@@ -154,6 +170,17 @@ test "Simon64Whitened roundtrip" {
     const plaintext: [2]u32 = .{ 0x656b696c, 0x20646e75 };
 
     const cipher = Simon64Whitened.init(key);
+    const ciphertext = cipher.encrypt(plaintext);
+    const decrypted = cipher.decrypt(ciphertext);
+
+    try std.testing.expectEqual(plaintext, decrypted);
+}
+
+test "Simon96Whitened roundtrip" {
+    const key: [7]u48 = .{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110, 0xaabbccddeeff, 0x112233445566, 0x778899aabbcc, 0xddeeff001122 };
+    const plaintext: [2]u48 = .{ 0x746168742074, 0x73756420666f };
+
+    const cipher = Simon96Whitened.init(key);
     const ciphertext = cipher.encrypt(plaintext);
     const decrypted = cipher.decrypt(ciphertext);
 
@@ -215,6 +242,28 @@ test "Speck48Whitened block roundtrip" {
     try std.testing.expectEqualSlices(u8, &plaintext_bytes, &decrypted_bytes);
 }
 
+test "Speck96Whitened block roundtrip" {
+    const key: [7]u48 = .{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110, 0xdeadbeefcafe, 0xbabe12345678, 0x9abcdef01234, 0x567890abcdef };
+    const plaintext_bytes: [12]u8 = .{ 0x6e, 0x20, 0x74, 0x69, 0x6d, 0x65, 0x76, 0x65, 0x72, 0x2c, 0x20, 0x69 };
+
+    const cipher = Speck96Whitened.init(key);
+    const ciphertext_bytes = cipher.encryptBlock(plaintext_bytes);
+    const decrypted_bytes = cipher.decryptBlock(ciphertext_bytes);
+
+    try std.testing.expectEqualSlices(u8, &plaintext_bytes, &decrypted_bytes);
+}
+
+test "Simon96Whitened block roundtrip" {
+    const key: [7]u48 = .{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110, 0xaabbccddeeff, 0x112233445566, 0x778899aabbcc, 0xddeeff001122 };
+    const plaintext_bytes: [12]u8 = .{ 0x74, 0x20, 0x74, 0x68, 0x61, 0x74, 0x6f, 0x66, 0x20, 0x64, 0x75, 0x73 };
+
+    const cipher = Simon96Whitened.init(key);
+    const ciphertext_bytes = cipher.encryptBlock(plaintext_bytes);
+    const decrypted_bytes = cipher.decryptBlock(ciphertext_bytes);
+
+    try std.testing.expectEqualSlices(u8, &plaintext_bytes, &decrypted_bytes);
+}
+
 test "whitening changes ciphertext" {
     const base_key: [4]u16 = .{ 0x0100, 0x0908, 0x1110, 0x1918 };
     const whitening_key: [8]u16 = .{ 0x0100, 0x0908, 0x1110, 0x1918, 0xdead, 0xbeef, 0xcafe, 0xbabe };
@@ -264,6 +313,36 @@ test "Speck64Whitened fromBytes" {
 
     const cipher_bytes = Speck64Whitened.fromBytes(key_bytes);
     const cipher_words = Speck64Whitened.init(key_words);
+
+    try std.testing.expectEqual(cipher_words.encrypt(plaintext), cipher_bytes.encrypt(plaintext));
+}
+
+test "Speck96Whitened fromBytes" {
+    const key_words: [7]u48 = .{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110, 0xdeadbeefcafe, 0xbabe12345678, 0x9abcdef01234, 0x567890abcdef };
+    const plaintext: [2]u48 = .{ 0x656d6974206e, 0x69202c726576 };
+
+    var key_bytes: [42]u8 = undefined;
+    inline for (0..7) |i| {
+        std.mem.writeInt(u48, key_bytes[i * 6 ..][0..6], key_words[i], .little);
+    }
+
+    const cipher_bytes = Speck96Whitened.fromBytes(key_bytes);
+    const cipher_words = Speck96Whitened.init(key_words);
+
+    try std.testing.expectEqual(cipher_words.encrypt(plaintext), cipher_bytes.encrypt(plaintext));
+}
+
+test "Simon96Whitened fromBytes" {
+    const key_words: [7]u48 = .{ 0x050403020100, 0x0d0c0b0a0908, 0x151413121110, 0xaabbccddeeff, 0x112233445566, 0x778899aabbcc, 0xddeeff001122 };
+    const plaintext: [2]u48 = .{ 0x746168742074, 0x73756420666f };
+
+    var key_bytes: [42]u8 = undefined;
+    inline for (0..7) |i| {
+        std.mem.writeInt(u48, key_bytes[i * 6 ..][0..6], key_words[i], .little);
+    }
+
+    const cipher_bytes = Simon96Whitened.fromBytes(key_bytes);
+    const cipher_words = Simon96Whitened.init(key_words);
 
     try std.testing.expectEqual(cipher_words.encrypt(plaintext), cipher_bytes.encrypt(plaintext));
 }
