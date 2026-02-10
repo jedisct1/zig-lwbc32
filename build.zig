@@ -111,6 +111,7 @@ pub fn build(b: *std.Build) void {
 
     const test_files = [_][]const u8{
         "src/speck32.zig",
+        "src/speck48.zig",
         "src/speck64.zig",
         "src/simon32.zig",
         "src/simon64.zig",
@@ -141,6 +142,9 @@ pub fn build(b: *std.Build) void {
             .imports = &.{
                 .{ .name = "speck32.zig", .module = b.createModule(.{
                     .root_source_file = b.path("src/speck32.zig"),
+                }) },
+                .{ .name = "speck48.zig", .module = b.createModule(.{
+                    .root_source_file = b.path("src/speck48.zig"),
                 }) },
                 .{ .name = "speck64.zig", .module = b.createModule(.{
                     .root_source_file = b.path("src/speck64.zig"),

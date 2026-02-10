@@ -1,11 +1,13 @@
 const std = @import("std");
 
 const speck32 = @import("speck32.zig");
+const speck48 = @import("speck48.zig");
 const speck64 = @import("speck64.zig");
 const simon32 = @import("simon32.zig");
 const simeck32 = @import("simeck32.zig");
 
 const Speck32 = speck32.Speck32;
+const Speck48 = speck48.Speck48;
 const Speck64 = speck64.Speck64;
 const Simon32 = simon32.Simon32;
 const Simeck32 = simeck32.Simeck32;
@@ -20,6 +22,22 @@ test "SPECK32/64 official test vector" {
     const expected: [2]u16 = .{ 0xa868, 0x42f2 };
 
     const cipher = Speck32.init(key);
+    const ciphertext = cipher.encrypt(plaintext);
+
+    try std.testing.expectEqual(expected[0], ciphertext[0]);
+    try std.testing.expectEqual(expected[1], ciphertext[1]);
+
+    const decrypted = cipher.decrypt(ciphertext);
+    try std.testing.expectEqual(plaintext[0], decrypted[0]);
+    try std.testing.expectEqual(plaintext[1], decrypted[1]);
+}
+
+test "SPECK48/96 official test vector" {
+    const key: [4]u24 = .{ 0x020100, 0x0a0908, 0x121110, 0x1a1918 };
+    const plaintext: [2]u24 = .{ 0x6d2073, 0x696874 };
+    const expected: [2]u24 = .{ 0x735e10, 0xb6445d };
+
+    const cipher = Speck48.init(key);
     const ciphertext = cipher.encrypt(plaintext);
 
     try std.testing.expectEqual(expected[0], ciphertext[0]);
