@@ -7,6 +7,7 @@ A Zig implementation of lightweight block ciphers from the SPECK/SIMON family. T
 | Cipher       | Block Size | Key Size | Rounds | Word Size | Structure                     |
 | ------------ | ---------- | -------- | ------ | --------- | ----------------------------- |
 | SPECK32/64   | 32 bits    | 64 bits  | 22     | 16-bit    | ARX (Addition, Rotation, XOR) |
+| SPECK48/96   | 48 bits    | 96 bits  | 23     | 24-bit    | ARX (Addition, Rotation, XOR) |
 | SPECK64/128  | 64 bits    | 128 bits | 27     | 32-bit    | ARX (Addition, Rotation, XOR) |
 | SIMON32/64   | 32 bits    | 64 bits  | 32     | 16-bit    | Balanced Feistel              |
 | SIMON64/128  | 64 bits    | 128 bits | 44     | 32-bit    | Balanced Feistel              |
@@ -20,6 +21,7 @@ All ciphers have whitened variants with extended keys that add XOR whitening bef
 | Cipher           | Block Size | Key Size | Structure                        |
 | ---------------- | ---------- | -------- | -------------------------------- |
 | Speck32Whitened  | 32 bits    | 128 bits | 64-bit cipher + 32-bit pre/post  |
+| Speck48Whitened  | 48 bits    | 192 bits | 96-bit cipher + 48-bit pre/post  |
 | Speck64Whitened  | 64 bits    | 256 bits | 128-bit cipher + 64-bit pre/post |
 | Simon32Whitened  | 32 bits    | 128 bits | 64-bit cipher + 32-bit pre/post  |
 | Simon64Whitened  | 64 bits    | 256 bits | 128-bit cipher + 64-bit pre/post |
@@ -56,6 +58,10 @@ const speck32 = lwbc32.Speck32.init(.{ 0x0100, 0x0908, 0x1110, 0x1918 });
 const ciphertext = speck32.encrypt(.{ 0x6574, 0x694c });
 const plaintext = speck32.decrypt(ciphertext);
 
+// 48-bit block cipher (24-bit words)
+const speck48 = lwbc32.Speck48.init(.{ 0x020100, 0x0a0908, 0x121110, 0x1a1918 });
+const ct48 = speck48.encrypt(.{ 0x6d2073, 0x696874 });
+
 // 64-bit block ciphers
 const simon64 = lwbc32.Simon64.init(.{ 0x03020100, 0x0b0a0908, 0x13121110, 0x1b1a1918 });
 
@@ -77,12 +83,13 @@ Benchmark results on Apple M-series (10 million encryptions, ReleaseFast):
 
 | Cipher   | Time     | Ops/sec | Throughput |
 | -------- | -------- | ------- | ---------- |
-| SPECK32  | 258 ms   | 38.8M   | 1.24 Gbps  |
-| SPECK64  | 200 ms   | 50.1M   | 3.21 Gbps  |
-| SIMON32  | 476 ms   | 21.0M   | 0.67 Gbps  |
-| SIMON64  | 432 ms   | 23.2M   | 1.48 Gbps  |
-| SIMECK32 | 460 ms   | 21.8M   | 0.70 Gbps  |
-| SIMECK64 | 427 ms   | 23.4M   | 1.50 Gbps  |
+| SPECK32  | 258 ms   | 38.7M   | 1.24 Gbps  |
+| SPECK48  | 236 ms   | 42.5M   | 2.04 Gbps  |
+| SPECK64  | 194 ms   | 51.5M   | 3.29 Gbps  |
+| SIMON32  | 464 ms   | 21.6M   | 0.69 Gbps  |
+| SIMON64  | 427 ms   | 23.4M   | 1.50 Gbps  |
+| SIMECK32 | 443 ms   | 22.6M   | 0.72 Gbps  |
+| SIMECK64 | 420 ms   | 23.7M   | 1.53 Gbps  |
 
 SPECK is faster due to fewer rounds and simpler ARX operations. Whitened variants have minimal overhead (~2-3%).
 
@@ -92,9 +99,11 @@ SPECK is faster due to fewer rounds and simpler ARX operations. Whitened variant
 
 1. **32-bit block size vulnerability**: The 32-bit variants use small blocks, making them vulnerable to birthday attacks with just 2^16 blocks. They should only be used in extremely constrained environments.
 
-2. **64-bit block size**: SPECK64/128 and SIMON64/128 provide better security margins (birthday bound at 2^32 blocks) and 128-bit key security against brute force.
+2. **48-bit block size**: SPECK48/96 offers slightly better margins (birthday bound at 2^24 blocks) but is still limited for high-volume applications.
 
-3. **Intended use**: These lightweight ciphers are intended for constrained environments where larger block sizes are not feasible.
+3. **64-bit block size**: SPECK64/128 and SIMON64/128 provide better security margins (birthday bound at 2^32 blocks) and 128-bit key security against brute force.
+
+4. **Intended use**: These lightweight ciphers are intended for constrained environments where larger block sizes are not feasible.
 
 For applications requiring strong security, consider using other authenticated encryption schemes.
 
