@@ -9,6 +9,7 @@ const Simon64 = @import("simon64.zig").Simon64;
 const Simon96 = @import("simon96.zig").Simon96;
 const Simeck32 = @import("simeck32.zig").Simeck32;
 const Simeck64 = @import("simeck64.zig").Simeck64;
+const Crax = @import("crax.zig").Crax;
 
 fn Whitened(comptime BaseCipher: type, comptime Word: type, comptime block_bytes: usize, comptime cipher_key_words: usize) type {
     return struct {
@@ -98,6 +99,7 @@ pub const Simon64Whitened = Whitened(Simon64, u32, 8, 4);
 pub const Simon96Whitened = Whitened(Simon96, u48, 12, 3);
 pub const Simeck32Whitened = Whitened(Simeck32, u16, 4, 4);
 pub const Simeck64Whitened = Whitened(Simeck64, u32, 8, 4);
+pub const CraxWhitened = Whitened(Crax, u32, 8, 4);
 
 test "Speck32Whitened roundtrip" {
     const key: [8]u16 = .{ 0x0100, 0x0908, 0x1110, 0x1918, 0xdead, 0xbeef, 0xcafe, 0xbabe };
@@ -343,6 +345,42 @@ test "Simon96Whitened fromBytes" {
 
     const cipher_bytes = Simon96Whitened.fromBytes(key_bytes);
     const cipher_words = Simon96Whitened.init(key_words);
+
+    try std.testing.expectEqual(cipher_words.encrypt(plaintext), cipher_bytes.encrypt(plaintext));
+}
+
+test "CraxWhitened roundtrip" {
+    const key: [8]u32 = .{ 0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0xdeadbeef, 0xcafebabe, 0x12345678, 0x9abcdef0 };
+    const plaintext: [2]u32 = .{ 0x33221100, 0x77665544 };
+
+    const cipher = CraxWhitened.init(key);
+    const ciphertext = cipher.encrypt(plaintext);
+    const decrypted = cipher.decrypt(ciphertext);
+
+    try std.testing.expectEqual(plaintext, decrypted);
+}
+
+test "CraxWhitened block roundtrip" {
+    const key: [8]u32 = .{ 0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0xdeadbeef, 0xcafebabe, 0x12345678, 0x9abcdef0 };
+    const plaintext_bytes: [8]u8 = .{ 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77 };
+
+    const cipher = CraxWhitened.init(key);
+    const ciphertext_bytes = cipher.encryptBlock(plaintext_bytes);
+    const decrypted_bytes = cipher.decryptBlock(ciphertext_bytes);
+
+    try std.testing.expectEqualSlices(u8, &plaintext_bytes, &decrypted_bytes);
+}
+
+test "CraxWhitened fromBytes" {
+    const key_bytes: [32]u8 = .{
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+        0xef, 0xbe, 0xad, 0xde, 0xbe, 0xba, 0xfe, 0xca, 0x78, 0x56, 0x34, 0x12, 0xf0, 0xde, 0xbc, 0x9a,
+    };
+    const key_words: [8]u32 = .{ 0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0xdeadbeef, 0xcafebabe, 0x12345678, 0x9abcdef0 };
+    const plaintext: [2]u32 = .{ 0x33221100, 0x77665544 };
+
+    const cipher_bytes = CraxWhitened.fromBytes(key_bytes);
+    const cipher_words = CraxWhitened.init(key_words);
 
     try std.testing.expectEqual(cipher_words.encrypt(plaintext), cipher_bytes.encrypt(plaintext));
 }

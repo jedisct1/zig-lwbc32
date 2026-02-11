@@ -18,6 +18,9 @@ const Simon48 = simon48.Simon48;
 const Simon96 = simon96.Simon96;
 const Simeck32 = simeck32.Simeck32;
 
+const crax = @import("crax.zig");
+const Crax = crax.Crax;
+
 test "SPECK32/64 official test vector" {
     // Official test vector from NSA paper
     // Key: 0x1918111009080100 (little-endian: 0x0100, 0x0908, 0x1110, 0x1918)
@@ -152,6 +155,22 @@ test "SIMECK32/64 official test vector" {
     const expected: [2]u16 = .{ 0x6779, 0x37a7 };
 
     const cipher = Simeck32.init(key);
+    const ciphertext = cipher.encrypt(plaintext);
+
+    try std.testing.expectEqual(expected[0], ciphertext[0]);
+    try std.testing.expectEqual(expected[1], ciphertext[1]);
+
+    const decrypted = cipher.decrypt(ciphertext);
+    try std.testing.expectEqual(plaintext[0], decrypted[0]);
+    try std.testing.expectEqual(plaintext[1], decrypted[1]);
+}
+
+test "CRAX-S-10 test vector" {
+    const key: [4]u32 = .{ 0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c };
+    const plaintext: [2]u32 = .{ 0x33221100, 0x77665544 };
+    const expected: [2]u32 = .{ 0x6203c5be, 0x7ae77255 };
+
+    const cipher = Crax.init(key);
     const ciphertext = cipher.encrypt(plaintext);
 
     try std.testing.expectEqual(expected[0], ciphertext[0]);

@@ -199,6 +199,25 @@ pub fn main() !void {
         try stdout.print("  Match: {}\n\n", .{std.meta.eql(plaintext64, decrypted)});
     }
 
+    {
+        const key64: [4]u32 = .{ 0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c };
+        const plaintext64: [2]u32 = .{ 0x33221100, 0x77665544 };
+        const crax = lwbc32.Crax.init(key64);
+        const ciphertext = crax.encrypt(plaintext64);
+        const decrypted = crax.decrypt(ciphertext);
+
+        try stdout.print("CRAX-S-10 (64-bit block, 128-bit key, Alzette ARX-box):\n", .{});
+        try stdout.print("  Key:        ", .{});
+        inline for (key64) |k| {
+            try stdout.print("{x:08} ", .{k});
+        }
+        try stdout.print("\n", .{});
+        try stdout.print("  Plaintext:  {x:08} {x:08}\n", .{ plaintext64[0], plaintext64[1] });
+        try stdout.print("  Ciphertext: {x:08} {x:08}\n", .{ ciphertext[0], ciphertext[1] });
+        try stdout.print("  Decrypted:  {x:08} {x:08}\n", .{ decrypted[0], decrypted[1] });
+        try stdout.print("  Match: {}\n\n", .{std.meta.eql(plaintext64, decrypted)});
+    }
+
     try stdout.print("Whitened Variants (with key whitening)\n", .{});
     try stdout.print("---------------------------------------\n\n", .{});
 
@@ -430,6 +449,25 @@ pub fn main() !void {
         try stdout.print("SIMECK64:  {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ simeck_ms, simeck_ops_sec, (simeck_ops_sec * 64.0) / 1_000_000_000.0 });
     }
 
+    {
+        const key64: [4]u32 = .{ 0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c };
+        const plaintext64: [2]u32 = .{ 0x33221100, 0x77665544 };
+        const crax = lwbc32.Crax.init(key64);
+        const start = Io.Clock.awake.now(io);
+
+        var block = plaintext64;
+        var i: usize = 0;
+        while (i < iterations) : (i += 1) {
+            block = crax.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
+        }
+        dummy +%= block[0] +% block[1];
+
+        const crax_ms = @as(f64, @floatFromInt(start.untilNow(io, .awake).nanoseconds)) / 1_000_000.0;
+        const crax_ops_sec = @as(f64, iterations) / (crax_ms / 1000.0);
+        try stdout.print("CRAX:      {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ crax_ms, crax_ops_sec, (crax_ops_sec * 64.0) / 1_000_000_000.0 });
+    }
+
     try stdout.print("\nWhitened variants:\n", .{});
 
     {
@@ -617,6 +655,25 @@ pub fn main() !void {
         const ms = @as(f64, @floatFromInt(start.untilNow(io, .awake).nanoseconds)) / 1_000_000.0;
         const ops_sec = @as(f64, iterations) / (ms / 1000.0);
         try stdout.print("SIMECK64W: {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ ms, ops_sec, (ops_sec * 64.0) / 1_000_000_000.0 });
+    }
+
+    {
+        const whitened_key: [8]u32 = .{ 0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0xdeadbeef, 0xcafebabe, 0x12345678, 0x9abcdef0 };
+        const plaintext64: [2]u32 = .{ 0x33221100, 0x77665544 };
+        const crax = lwbc32.CraxWhitened.init(whitened_key);
+        const start = Io.Clock.awake.now(io);
+
+        var block = plaintext64;
+        var i: usize = 0;
+        while (i < iterations) : (i += 1) {
+            block = crax.encrypt(block);
+            std.mem.doNotOptimizeAway(&block);
+        }
+        dummy +%= block[0] +% block[1];
+
+        const ms = @as(f64, @floatFromInt(start.untilNow(io, .awake).nanoseconds)) / 1_000_000.0;
+        const ops_sec = @as(f64, iterations) / (ms / 1000.0);
+        try stdout.print("CRAXW:     {d:.2} ms ({d:.0} ops/sec, {d:.2} Gbps)\n", .{ ms, ops_sec, (ops_sec * 64.0) / 1_000_000_000.0 });
     }
 
     try stdout_writer.interface.flush();

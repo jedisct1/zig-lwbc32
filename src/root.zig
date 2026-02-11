@@ -10,6 +10,7 @@ pub const Simon64 = @import("simon64.zig").Simon64;
 pub const Simon96 = @import("simon96.zig").Simon96;
 pub const Simeck32 = @import("simeck32.zig").Simeck32;
 pub const Simeck64 = @import("simeck64.zig").Simeck64;
+pub const Crax = @import("crax.zig").Crax;
 
 const whitening = @import("whitening.zig");
 pub const Speck32Whitened = whitening.Speck32Whitened;
@@ -22,3 +23,4 @@ pub const Simon64Whitened = whitening.Simon64Whitened;
 pub const Simon96Whitened = whitening.Simon96Whitened;
 pub const Simeck32Whitened = whitening.Simeck32Whitened;
 pub const Simeck64Whitened = whitening.Simeck64Whitened;
+pub const CraxWhitened = whitening.CraxWhitened;
